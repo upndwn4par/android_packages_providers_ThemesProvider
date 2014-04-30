@@ -38,7 +38,6 @@ import android.provider.ThemesContract.MixnMatchColumns;
 import android.provider.ThemesContract.ThemesColumns;
 import android.util.Log;
 
-import org.cyanogenmod.themes.provider.AppReceiver;
 import org.cyanogenmod.themes.provider.ThemesOpenHelper.MixnMatchTable;
 import org.cyanogenmod.themes.provider.ThemesOpenHelper.ThemesTable;
 
@@ -285,7 +284,7 @@ public class ThemesProvider extends ContentProvider {
             List<PackageInfo> themePackages = new ArrayList<PackageInfo>();
             Map<String, PackageInfo> pmThemes = new HashMap<String, PackageInfo>();
             for (PackageInfo info : packages) {
-                if (info.isThemeApk || info.isLegacyThemeApk) {
+                if (info.isThemeApk || info.isLegacyThemeApk || info.isLegacyIconPackApk) {
                     themePackages.add(info);
                     pmThemes.put(info.packageName, info);
                 }
