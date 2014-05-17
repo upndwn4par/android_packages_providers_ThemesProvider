@@ -48,6 +48,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static android.content.res.CustomTheme.HOLO_DEFAULT;
+
 public class ThemesProvider extends ContentProvider {
     private static final String TAG = ThemesProvider.class.getSimpleName();
     private static final boolean DEBUG = false;
@@ -77,7 +79,8 @@ public class ThemesProvider extends ContentProvider {
 
     public static String getActiveTheme(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        return prefs.getString("SelectedThemePkgName", "default");
+        return prefs.getString("SelectedThemePkgName",
+                ThemeUtils.getDefaultThemePackageName(context));
     }
 
     @Override
@@ -296,16 +299,22 @@ public class ThemesProvider extends ContentProvider {
              */
             Cursor current = mDb.query(ThemesTable.TABLE_NAME, null, null, null, null, null, null);
             List<String> deleteList = new LinkedList<String>();
-            List<PackageInfo> updateList = new LinkedList<PackageInfo>();
+            List<String> updateList = new LinkedList<String>();
+            String defaultThemePkg = ThemeUtils.getDefaultThemePackageName(getContext());
             while (current.moveToNext()) {
                 int updateTimeIdx = current.getColumnIndex(
                         ThemesContract.ThemesColumns.LAST_UPDATE_TIME);
                 int pkgNameIdx = current.getColumnIndex(ThemesContract.ThemesColumns.PKG_NAME);
+                int isDefaultIdx = current.getColumnIndex(ThemesColumns.IS_DEFAULT_THEME);
                 long updateTime = current.getLong(updateTimeIdx);
                 String pkgName = current.getString(pkgNameIdx);
+                boolean isDefault = current.getInt(isDefaultIdx) == 1;
 
-                // Ignore default theme
-                if (pkgName.equals("default")) {
+                // Ignore holo theme
+                if (pkgName.equals(HOLO_DEFAULT)) {
+                    if (defaultThemePkg.equals(HOLO_DEFAULT) != isDefault) {
+                        updateList.add(HOLO_DEFAULT);
+                    }
                     continue;
                 }
 
@@ -320,8 +329,9 @@ public class ThemesProvider extends ContentProvider {
                 // updated in the db
                 long pmUpdateTime = (info.lastUpdateTime == 0) ? info.firstInstallTime
                         : info.lastUpdateTime;
-                if (pmUpdateTime != updateTime) {
-                    updateList.add(info);
+                if (pmUpdateTime != updateTime ||
+                        (defaultThemePkg.equals(info.packageName) != isDefault)) {
+                    updateList.add(info.packageName);
                 }
 
                 // The remaining packages in pmThemes
@@ -348,7 +358,7 @@ public class ThemesProvider extends ContentProvider {
             }
             ThemeManager mService = (ThemeManager) getContext().getSystemService(
                     Context.THEME_SERVICE);
-            mService.requestThemeChange("default", moveToDefault);
+            mService.requestThemeChange(HOLO_DEFAULT, moveToDefault);
 
             // Update the database after we revert to default
             deleteThemes(deleteList);
@@ -376,12 +386,12 @@ public class ThemesProvider extends ContentProvider {
             }
         }
 
-        private void updateThemes(List<PackageInfo> themesToUpdate) {
-            for (PackageInfo themeInfo : themesToUpdate) {
+        private void updateThemes(List<String> themesToUpdate) {
+            for (String pkgName : themesToUpdate) {
                 try {
-                    ThemePackageHelper.updatePackage(getContext(), themeInfo.packageName);
+                    ThemePackageHelper.updatePackage(getContext(), pkgName);
                 } catch (NameNotFoundException e) {
-                    Log.e(TAG, "Unable to update theme " + themeInfo.packageName, e);
+                    Log.e(TAG, "Unable to update theme " + pkgName, e);
                 }
             }
         }

@@ -91,6 +91,8 @@ public class ThemePackageHelper {
         values.put(ThemesColumns.DATE_CREATED, System.currentTimeMillis());
         values.put(ThemesColumns.PRESENT_AS_THEME, isPresentableTheme);
         values.put(ThemesColumns.IS_LEGACY_THEME, pi.isLegacyThemeApk);
+        values.put(ThemesColumns.IS_DEFAULT_THEME,
+                ThemeUtils.getDefaultThemePackageName(context).equals(pi.packageName) ? 1 : 0);
         values.put(ThemesColumns.LAST_UPDATE_TIME, pi.lastUpdateTime);
 
         // Insert theme capabilities
@@ -113,6 +115,8 @@ public class ThemePackageHelper {
         values.put(ThemesColumns.DATE_CREATED, System.currentTimeMillis());
         values.put(ThemesColumns.PRESENT_AS_THEME, 1);
         values.put(ThemesColumns.IS_LEGACY_THEME, pi.isLegacyThemeApk);
+        values.put(ThemesColumns.IS_DEFAULT_THEME,
+                ThemeUtils.getDefaultThemePackageName(context).equals(pi.packageName) ? 1 : 0);
         values.put(ThemesColumns.LAST_UPDATE_TIME, pi.lastUpdateTime);
 
         // Insert theme capabilities
@@ -173,6 +177,8 @@ public class ThemePackageHelper {
         values.put(ThemesColumns.DATE_CREATED, System.currentTimeMillis());
         values.put(ThemesColumns.PRESENT_AS_THEME, isPresentableTheme);
         values.put(ThemesColumns.IS_LEGACY_THEME, pi.isLegacyThemeApk);
+        values.put(ThemesColumns.IS_DEFAULT_THEME,
+                ThemeUtils.getDefaultThemePackageName(context).equals(pi.packageName) ? 1 : 0);
         values.put(ThemesColumns.LAST_UPDATE_TIME, pi.lastUpdateTime);
 
         String where = ThemesColumns.PKG_NAME + "=?";
@@ -190,6 +196,8 @@ public class ThemePackageHelper {
         values.put(ThemesColumns.DATE_CREATED, System.currentTimeMillis());
         values.put(ThemesColumns.PRESENT_AS_THEME, 1);
         values.put(ThemesColumns.IS_LEGACY_THEME, pi.isLegacyThemeApk);
+        values.put(ThemesColumns.IS_DEFAULT_THEME,
+                ThemeUtils.getDefaultThemePackageName(context).equals(pi.packageName) ? 1 : 0);
         values.put(ThemesColumns.LAST_UPDATE_TIME, pi.lastUpdateTime);
 
         String where = ThemesColumns.PKG_NAME + "=?";
