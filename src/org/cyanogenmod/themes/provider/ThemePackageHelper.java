@@ -39,6 +39,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static android.content.res.ThemeConfig.HOLO_DEFAULT;
+
 /**
  * Helper class to populate the provider with info from the theme.
  */
