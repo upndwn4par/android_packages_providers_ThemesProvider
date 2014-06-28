@@ -38,6 +38,7 @@ import android.provider.ThemesContract.MixnMatchColumns;
 import android.provider.ThemesContract.ThemesColumns;
 import android.util.Log;
 
+import org.cyanogenmod.themes.provider.AppReceiver;
 import org.cyanogenmod.themes.provider.ThemesOpenHelper.MixnMatchTable;
 import org.cyanogenmod.themes.provider.ThemesOpenHelper.ThemesTable;
 
@@ -47,8 +48,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
-import static android.content.res.CustomTheme.HOLO_DEFAULT;
 
 public class ThemesProvider extends ContentProvider {
     private static final String TAG = ThemesProvider.class.getSimpleName();
@@ -79,8 +78,7 @@ public class ThemesProvider extends ContentProvider {
 
     public static String getActiveTheme(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        return prefs.getString("SelectedThemePkgName",
-                ThemeUtils.getDefaultThemePackageName(context));
+        return prefs.getString("SelectedThemePkgName", "default");
     }
 
     @Override
@@ -89,21 +87,6 @@ public class ThemesProvider extends ContentProvider {
         switch (match) {
         case THEMES:
             SQLiteDatabase sqlDB = mDatabase.getWritableDatabase();
-
-            // Determine the pkg name and delete preview images
-            String[] columns = new String[] {ThemesColumns.PKG_NAME};
-            Cursor c = sqlDB.query(ThemesTable.TABLE_NAME, columns, selection,
-                    selectionArgs, null, null, null);
-            if (c == null) return 0;
-            if (c.moveToFirst()) {
-                String pkgName = c.getString(0);
-                Intent intent = new Intent(getContext(), CopyImageService.class);
-                intent.setAction(CopyImageService.ACTION_DELETE);
-                intent.putExtra(CopyImageService.EXTRA_PKG_NAME, pkgName);
-                getContext().startService(intent);
-            }
-            c.close();
-
             int rowsDeleted = sqlDB.delete(ThemesTable.TABLE_NAME, selection, selectionArgs);
             getContext().getContentResolver().notifyChange(uri, null);
             return rowsDeleted;
@@ -139,7 +122,6 @@ public class ThemesProvider extends ContentProvider {
         case THEMES:
             id = sqlDB.insert(ThemesOpenHelper.ThemesTable.TABLE_NAME, null, values);
             Intent intent = new Intent(getContext(), CopyImageService.class);
-            intent.setAction(CopyImageService.ACTION_INSERT);
             intent.putExtra(CopyImageService.EXTRA_PKG_NAME,
                     values.getAsString(ThemesColumns.PKG_NAME));
             getContext().startService(intent);
@@ -303,7 +285,7 @@ public class ThemesProvider extends ContentProvider {
             List<PackageInfo> themePackages = new ArrayList<PackageInfo>();
             Map<String, PackageInfo> pmThemes = new HashMap<String, PackageInfo>();
             for (PackageInfo info : packages) {
-                if (info.isThemeApk || info.isLegacyThemeApk || info.isLegacyIconPackApk) {
+                if (info.isThemeApk || info.isLegacyThemeApk) {
                     themePackages.add(info);
                     pmThemes.put(info.packageName, info);
                 }
@@ -315,22 +297,16 @@ public class ThemesProvider extends ContentProvider {
              */
             Cursor current = mDb.query(ThemesTable.TABLE_NAME, null, null, null, null, null, null);
             List<String> deleteList = new LinkedList<String>();
-            List<String> updateList = new LinkedList<String>();
-            String defaultThemePkg = ThemeUtils.getDefaultThemePackageName(getContext());
+            List<PackageInfo> updateList = new LinkedList<PackageInfo>();
             while (current.moveToNext()) {
                 int updateTimeIdx = current.getColumnIndex(
                         ThemesContract.ThemesColumns.LAST_UPDATE_TIME);
                 int pkgNameIdx = current.getColumnIndex(ThemesContract.ThemesColumns.PKG_NAME);
-                int isDefaultIdx = current.getColumnIndex(ThemesColumns.IS_DEFAULT_THEME);
                 long updateTime = current.getLong(updateTimeIdx);
                 String pkgName = current.getString(pkgNameIdx);
-                boolean isDefault = current.getInt(isDefaultIdx) == 1;
 
-                // Ignore holo theme
-                if (pkgName.equals(HOLO_DEFAULT)) {
-                    if (defaultThemePkg.equals(HOLO_DEFAULT) != isDefault) {
-                        updateList.add(HOLO_DEFAULT);
-                    }
+                // Ignore default theme
+                if (pkgName.equals("default")) {
                     continue;
                 }
 
@@ -345,9 +321,8 @@ public class ThemesProvider extends ContentProvider {
                 // updated in the db
                 long pmUpdateTime = (info.lastUpdateTime == 0) ? info.firstInstallTime
                         : info.lastUpdateTime;
-                if (pmUpdateTime != updateTime ||
-                        (defaultThemePkg.equals(info.packageName) != isDefault)) {
-                    updateList.add(info.packageName);
+                if (pmUpdateTime != updateTime) {
+                    updateList.add(info);
                 }
 
                 // The remaining packages in pmThemes
@@ -374,7 +349,7 @@ public class ThemesProvider extends ContentProvider {
             }
             ThemeManager mService = (ThemeManager) getContext().getSystemService(
                     Context.THEME_SERVICE);
-            mService.requestThemeChange(HOLO_DEFAULT, moveToDefault);
+            mService.requestThemeChange("default", moveToDefault);
 
             // Update the database after we revert to default
             deleteThemes(deleteList);
@@ -402,15 +377,17 @@ public class ThemesProvider extends ContentProvider {
             }
         }
 
-        private void updateThemes(List<String> themesToUpdate) {
-            for (String pkgName : themesToUpdate) {
+        private void updateThemes(List<PackageInfo> themesToUpdate) {
+            for (PackageInfo themeInfo : themesToUpdate) {
                 try {
-                    ThemePackageHelper.updatePackage(getContext(), pkgName);
+                    ThemePackageHelper.updatePackage(getContext(), themeInfo.packageName);
                 } catch (NameNotFoundException e) {
-                    Log.e(TAG, "Unable to update theme " + pkgName, e);
+                    Log.e(TAG, "Unable to update theme " + themeInfo.packageName, e);
                 }
             }
         }
     }
 
 }
+
+

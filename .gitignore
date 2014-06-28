@@ -9,3 +9,5 @@ libs/
 gen/
 .idea/
 project.properties
+*~
+.*
